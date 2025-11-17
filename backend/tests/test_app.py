@@ -9,7 +9,7 @@ class InMemoryCollection:
     def __init__(self):
         self._data = []
 
-    def find_one(self, query):
+    def find_one(self, query, projection=None):
         for d in self._data:
             match = True
             for k, v in query.items():
@@ -17,7 +17,12 @@ class InMemoryCollection:
                     match = False
                     break
             if match:
-                return d
+                out = dict(d)
+                if projection:
+                    for k in list(out.keys()):
+                        if k in projection and projection[k] == 0:
+                            del out[k]
+                return out
         return None
 
     def insert_one(self, doc):
