@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:5001/api';
+// Base URL para la API. Puede configurarse con REACT_APP_API_URL
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
 // Añadimos 'onBack'
 const AdminLogin = ({ onLoginSuccess, onBack }) => {
@@ -30,8 +31,8 @@ const AdminLogin = ({ onLoginSuccess, onBack }) => {
 
     return (
         // Fondo blanco para que contraste
-        <div style={{...styles.container, backgroundColor: '#fff', color: '#333'}}>
-            
+        <div style={{ ...styles.container, backgroundColor: '#fff', color: '#333' }}>
+
             {/* Botón de Volver */}
             <button onClick={onBack} style={styles.backButton}>&larr; Volver</button>
 

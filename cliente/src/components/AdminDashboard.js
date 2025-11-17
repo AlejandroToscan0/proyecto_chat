@@ -1,21 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react'; // <-- ¡Añadir useCallback!
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:5001/api';
+// Base URL para la API. Puede configurarse con REACT_APP_API_URL
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
 const AdminDashboard = ({ token, onLogout }) => {
     // --- Estados para la creación de salas ---
     const [tipo, setTipo] = useState('Texto');
     const [salaInfo, setSalaInfo] = useState(null);
     const [loadingCreate, setLoadingCreate] = useState(false);
-    
+
     // --- Estados para la lista de salas ---
     const [salas, setSalas] = useState([]);
     const [loadingSalas, setLoadingSalas] = useState(false);
     const [error, setError] = useState('');
-    
+
     // --- Estados para el modal de historial ---
-    const [historialSala, setHistorialSala] = useState(null); 
+    const [historialSala, setHistorialSala] = useState(null);
     const [loadingHistorial, setLoadingHistorial] = useState(false);
 
     // --- Encabezados de autorización (Auth Headers) ---
@@ -59,7 +60,7 @@ const AdminDashboard = ({ token, onLogout }) => {
                 { tipo },
                 authHeaders
             );
-            setSalaInfo(response.data); 
+            setSalaInfo(response.data);
             fetchSalas(); // Recarga la lista
         } catch (err) {
             setError(err.response?.data?.error || "Error al crear sala.");
@@ -74,7 +75,7 @@ const AdminDashboard = ({ token, onLogout }) => {
         setError('');
         try {
             const response = await axios.get(`${BASE_URL}/admin/sala/${id_sala}`, authHeaders);
-            setHistorialSala(response.data); 
+            setHistorialSala(response.data);
         } catch (err) {
             setError(err.response?.data?.error || "Error al cargar historial.");
         } finally {
@@ -101,9 +102,9 @@ const AdminDashboard = ({ token, onLogout }) => {
         <div style={styles.container}>
             {/* --- Modal de Historial --- */}
             {historialSala && (
-                <HistorialModal 
-                    sala={historialSala} 
-                    onClose={() => setHistorialSala(null)} 
+                <HistorialModal
+                    sala={historialSala}
+                    onClose={() => setHistorialSala(null)}
                 />
             )}
 
@@ -112,7 +113,7 @@ const AdminDashboard = ({ token, onLogout }) => {
                 <h2 style={styles.title}>Panel de Administración</h2>
                 <button onClick={onLogout} style={styles.logoutButton}>Cerrar Sesión</button>
             </div>
-            
+
             {/* --- Sección de Crear Sala --- */}
             <div style={styles.section}>
                 <h3 style={styles.subtitle}>Crear Nueva Sala</h3>
@@ -159,15 +160,15 @@ const AdminDashboard = ({ token, onLogout }) => {
                                 <td>{sala.tipo}</td>
                                 <td>{sala.usuarios_conectados.length}</td>
                                 <td style={styles.actionsCell}>
-                                    <button 
-                                        onClick={() => handleVerHistorial(sala.id_sala)} 
+                                    <button
+                                        onClick={() => handleVerHistorial(sala.id_sala)}
                                         style={styles.actionButtonView}
                                         disabled={loadingHistorial}
                                     >
                                         Ver Historial
                                     </button>
-                                    <button 
-                                        onClick={() => handleEliminarSala(sala.id_sala)} 
+                                    <button
+                                        onClick={() => handleEliminarSala(sala.id_sala)}
                                         style={styles.actionButtonDelete}
                                     >
                                         Eliminar
@@ -197,13 +198,13 @@ const HistorialModal = ({ sala, onClose }) => {
                     ) : (
                         sala.mensajes.map((msg, index) => (
                             <div key={index} style={styles.messageItem}>
-                                <strong>{msg.nickname}</strong> 
+                                <strong>{msg.nickname}</strong>
                                 <span style={styles.messageTimestamp}>
                                     {msg.timestamp ? new Date(msg.timestamp).toLocaleString() : ''}
                                 </span>
                                 <p style={styles.messageContent}>
-                                    {msg.tipo === 'archivo' ? 
-                                        `[Archivo] ${msg.nombre_archivo}` : 
+                                    {msg.tipo === 'archivo' ?
+                                        `[Archivo] ${msg.nombre_archivo}` :
                                         msg.contenido}
                                 </p>
                             </div>

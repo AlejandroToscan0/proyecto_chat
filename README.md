@@ -26,7 +26,7 @@ Instalación y configuración (desarrollo)
 1) Clona el repo (si no lo has hecho):
 
 ```bash
-git clone <tu-repo-url>
+git clone <https://github.com/AlejandroToscan0/proyecto_chat>
 cd proyecto_chat
 ```
 

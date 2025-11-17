@@ -16,6 +16,28 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 
+# --- Cargar variables desde backend/.env si existe (útil al ejecutar python directamente)
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.isfile(env_path):
+    try:
+        print(f"ℹ️  Cargando variables de entorno desde {env_path}")
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if '=' not in line:
+                    continue
+                k, v = line.split('=', 1)
+                k = k.strip()
+                v = v.strip()
+                if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+                    v = v[1:-1]
+                # No sobreescribir variables ya exportadas por el entorno
+                os.environ.setdefault(k, v)
+    except Exception as e:
+        print(f"⚠️  No pude cargar {env_path}: {e}")
+
 # --- 1. CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
 # Leer SECRET_KEY desde variables de entorno (recomendado). Se usa un valor por defecto
@@ -40,8 +62,21 @@ def allowed_file(filename):
 MONGO_URI = os.environ.get('MONGO_URI', "mongodb+srv://malugmana2_db_user:appServer1619@cluster0.h7gaa5e.mongodb.net/?appName=Cluster0")
 if 'MONGO_URI' not in os.environ:
     print("⚠️  MONGO_URI no está en las variables de entorno — usando la URI embebida (solo dev).")
+
+# Intentar usar certifi para una verificación TLS robusta
+ca_file = None
 try:
-    client = pymongo.MongoClient(MONGO_URI)
+    import certifi
+    ca_file = certifi.where()
+    print(f"✔️  certifi encontrado: {ca_file}")
+except Exception:
+    ca_file = None
+
+try:
+    if ca_file:
+        client = pymongo.MongoClient(MONGO_URI, tlsCAFile=ca_file)
+    else:
+        client = pymongo.MongoClient(MONGO_URI)
     db = client.get_database("chat_distribuido")
     salas_collection = db.get_collection("salas")
     admin_collection = db.get_collection("admins")
