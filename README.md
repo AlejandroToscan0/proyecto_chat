@@ -144,6 +144,38 @@ Soporte y siguientes pasos recomendados
 - Evaluar usar Docker para desarrollo y despliegue reproducible.
 - Integrar CI para ejecutar linter/tests antes de push.
 
+CI / Tests
+----------------
+He añadido pruebas unitarias para el backend (endpoints REST y eventos WebSocket) y un workflow de GitHub Actions
+que ejecuta pytest en `backend/tests` al hacer push o abrir Pull Requests en `main`.
+
+Cómo ejecutar los tests localmente:
+
+```bash
+# activar venv
+source backend/.venv/bin/activate
+# instalar pytest si no está (ya debería estar en requirements)
+pip install pytest
+# ejecutar todos los tests del backend
+pytest backend/tests -q
+```
+
+Qué incluyen las pruebas
+- Tests REST: creación de admin, login, creación/listado/eliminación de salas. Se usan colecciones en memoria (mock)
+  para no depender de MongoDB Atlas.
+- Tests WebSocket: conexión con `socketio.test_client`, evento `join_room` y `send_message` verificando que
+  los mensajes se agregan a la sala en memoria.
+
+GitHub Actions
+----------------
+Workflow creado: `.github/workflows/python-app.yml`.
+Qué hace:
+- En push/PR a `main` instala dependencias desde `backend/requirements.txt` y ejecuta `pytest backend/tests`.
+
+Notas
+- El workflow en CI no necesita un MongoDB real porque las pruebas usan mocks/colecciones en memoria. En caso de
+  que añadas tests que sí dependan de MongoDB puedes configurar un servicio de MongoDB en el workflow.
+
 Contacto
 - Si quieres, puedo:
   - Añadir un `Procfile` / `systemd` unit example para ejecutar el backend en producción.
