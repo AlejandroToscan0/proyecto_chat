@@ -1,4 +1,183 @@
-# Proyecto Chat Distribuido
+# Proyecto C- 📝 Historial de mensajes persistente (MongoDB)
+
+## Arquitectura del Sistema
+
+### Arquitectura General
+
+El sistema sigue una arquitectura **cliente-servidor** con comunicación bidireccional en tiempo real:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     CLIENTE (React)                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │   HomePage   │  │   ChatRoom   │  │    Admin     │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+│         │                  │                  │                 │
+│         └──────────────────┼──────────────────┘                 │
+│                            │                                     │
+│                    ┌───────▼────────┐                          │
+│                    │  Socket.IO     │                          │
+│                    │  Client        │                          │
+│                    └───────┬────────┘                          │
+└────────────────────────────┼──────────────────────────────────┘
+                             │
+                    WebSocket│HTTP/REST
+                             │
+┌────────────────────────────▼──────────────────────────────────┐
+│                  SERVIDOR (Flask + SocketIO)                   │
+│  ┌──────────────────────────────────────────────────────────┐ │
+│  │                    Flask Application                      │ │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐         │ │
+│  │  │  REST API  │  │  WebSocket │  │   Upload   │         │ │
+│  │  │ Endpoints  │  │  Handlers  │  │  Manager   │         │ │
+│  │  └────────────┘  └────────────┘  └────────────┘         │ │
+│  └─────────────┬────────────┬────────────┬──────────────────┘ │
+│                │            │            │                     │
+│         ┌──────▼──────┐ ┌──▼───┐  ┌────▼─────┐              │
+│         │  JWT Auth   │ │CORS  │  │ Bcrypt   │              │
+│         └─────────────┘ └──────┘  └──────────┘              │
+└────────────────────────┬──────────────────────────────────────┘
+                         │
+                         │
+                ┌────────▼─────────┐
+                │  MongoDB Atlas   │
+                │                  │
+                │  ┌────────────┐  │
+                │  │   salas    │  │
+                │  └────────────┘  │
+                │  ┌────────────┐  │
+                │  │   admins   │  │
+                │  └────────────┘  │
+                └──────────────────┘
+```
+
+### Componentes Principales
+
+#### 1. Frontend (React)
+
+**Componentes:**
+- **HomePage**: Punto de entrada, validación de PIN y nickname
+- **ChatRoom**: Sala de chat principal con mensajería en tiempo real
+- **AdminLogin**: Autenticación de administradores
+- **AdminDashboard**: Panel de control para gestión de salas
+
+**Tecnologías:**
+- React 18.2.0
+- Socket.IO Client 4.5.4
+- Axios (HTTP requests)
+- React Testing Library
+
+#### 2. Backend (Flask + Socket.IO)
+
+**Capas:**
+
+1. **Capa de Presentación**
+   - Endpoints REST para administración
+   - WebSocket handlers para comunicación en tiempo real
+   - Middleware de autenticación JWT
+
+2. **Capa de Negocio**
+   - Gestión de salas de chat
+   - Validación de usuarios y permisos
+   - Procesamiento de archivos
+   - Administración de sesiones
+
+3. **Capa de Datos**
+   - Conexión a MongoDB Atlas
+   - Gestión de colecciones (salas, admins)
+   - Persistencia de mensajes e historial
+
+**Tecnologías:**
+- Flask 3.1.2
+- Flask-SocketIO 5.5.1
+- Gevent (servidor asíncrono)
+- PyMongo 4.15.4
+- JWT para autenticación
+- Bcrypt para encriptación
+
+#### 3. Base de Datos (MongoDB)
+
+**Colecciones:**
+
+```javascript
+// Colección: salas
+{
+  "_id": ObjectId("..."),
+  "id_sala": "ABC123",
+  "pin": "1234",
+  "tipo": "Multimedia",
+  "usuarios_conectados": ["user1", "user2"],
+  "mensajes": [
+    {
+      "nickname": "user1",
+      "tipo": "texto|archivo",
+      "contenido": "...",
+      "url": "...",  // solo para archivos
+      "timestamp": "2025-11-17T10:30:00Z"
+    }
+  ]
+}
+
+// Colección: admins
+{
+  "_id": ObjectId("..."),
+  "usuario": "admin",
+  "password": "$2b$12$..." // hash bcrypt
+}
+```
+
+### Flujo de Comunicación
+
+#### 1. Conexión de Usuario
+
+```
+Cliente                    Servidor                    MongoDB
+  │                          │                           │
+  │──join_room(pin,nick)────>│                           │
+  │                          │──find(pin)───────────────>│
+  │                          │<─sala encontrada──────────│
+  │                          │──update(añadir usuario)──>│
+  │<─chat_history────────────│                           │
+  │<─user_list───────────────│                           │
+  │<─new_message(bienvenida)─│                           │
+```
+
+#### 2. Envío de Mensaje
+
+```
+Cliente                    Servidor                    MongoDB
+  │                          │                           │
+  │──send_message(texto)────>│                           │
+  │                          │──update(push mensaje)────>│
+  │                          │──emit(broadcast)─────────>│
+  │<─new_message─────────────│                           │
+  │                          │                           │
+```
+
+#### 3. Subida de Archivo
+
+```
+Cliente                    Servidor                    MongoDB
+  │                          │                           │
+  │──POST /upload(file)─────>│                           │
+  │                          │──validar extensión        │
+  │                          │──guardar en /uploads      │
+  │                          │──update(push mensaje)────>│
+  │                          │──emit(new_message)───────>│
+  │<─file_url────────────────│                           │
+```
+
+### Seguridad
+
+1. **Autenticación JWT**: Tokens con expiración de 8 horas para administradores
+2. **Bcrypt**: Hashing de contraseñas con factor de costo 12
+3. **CORS**: Configurado para permitir solo orígenes específicos
+4. **Validación de Archivos**: 
+   - Extensiones permitidas: png, jpg, jpeg, gif, pdf, txt
+   - Tamaño máximo: 10 MB
+5. **Sanitización**: Uso de `secure_filename` para nombres de archivo
+
+## Estructura del proyecto Distribuido
 
 Sistema de chat en tiempo real con comunicación WebSocket, autenticación de administradores, gestión de salas y compartición de archivos.
 
@@ -136,6 +315,85 @@ pytest tests/ -v
 - `tests/test_app.py` - Pruebas de funciones auxiliares y configuración
 - `tests/test_endpoints.py` - Pruebas de endpoints REST y validaciones
 
+#### Explicación Detallada de Pruebas Backend
+
+**`tests/test_app.py`** (2 tests):
+
+1. **`test_allowed_file`**
+   - **Propósito**: Verificar que la función `allowed_file()` valida correctamente las extensiones permitidas
+   - **Qué prueba**: 
+     - ✅ Acepta archivos con extensiones válidas: `.png`, `.pdf`
+     - ❌ Rechaza archivos con extensiones prohibidas: `.exe`
+   - **Importancia**: Previene la subida de archivos maliciosos al servidor
+
+2. **`test_serve_nonexistent_file`**
+   - **Propósito**: Validar manejo de errores al solicitar archivos inexistentes
+   - **Qué prueba**: 
+     - El endpoint `/uploads/<filename>` retorna 404 para archivos que no existen
+   - **Importancia**: Asegura respuestas HTTP apropiadas y previene exposición de errores del servidor
+
+**`tests/test_endpoints.py`** (9 tests):
+
+1. **`test_setup_admin_without_db`**
+   - **Propósito**: Verificar comportamiento del endpoint de configuración sin base de datos
+   - **Qué prueba**: 
+     - `/api/setup-admin` retorna error 500 cuando MongoDB no está conectado
+     - Mensaje de error apropiado: "Base de datos no conectada"
+   - **Importancia**: Validar degradación controlada del sistema sin BD
+
+2. **`test_admin_login_without_db`**
+   - **Propósito**: Probar autenticación de admin sin acceso a la base de datos
+   - **Qué prueba**: 
+     - `/api/admin-login` retorna 500 cuando no hay conexión a MongoDB
+     - Payload con credenciales no causa crash del servidor
+   - **Importancia**: Garantizar que fallos de BD no comprometen estabilidad
+
+3. **`test_crear_sala_sin_token`**
+   - **Propósito**: Validar protección de endpoints administrativos
+   - **Qué prueba**: 
+     - `/api/crear-sala` retorna 401 (Unauthorized) sin header de Authorization
+     - Mensaje de error: "Token de autorización requerido"
+   - **Importancia**: Seguridad - solo admins autenticados pueden crear salas
+
+4. **`test_crear_sala_tipo_invalido`**
+   - **Propósito**: Verificar validación de parámetros en creación de salas
+   - **Qué prueba**: 
+     - Envío de tipo de sala no válido ("Invalido") es rechazado
+     - Sistema no crea salas con configuraciones incorrectas
+   - **Importancia**: Integridad de datos - solo tipos válidos (Texto, Multimedia)
+
+5. **`test_upload_without_db`**
+   - **Propósito**: Probar endpoint de subida de archivos sin base de datos
+   - **Qué prueba**: 
+     - `/api/upload` retorna 500 cuando MongoDB no está disponible
+   - **Importancia**: Evitar pérdida de archivos si no se pueden registrar en BD
+
+6. **`test_upload_sin_session_valida`**
+   - **Propósito**: Validar seguridad del upload de archivos
+   - **Qué prueba**: 
+     - Upload requiere un `socket_id` válido registrado en `user_sessions`
+     - Retorna 401 con mensaje "No autorizado" para sesiones inexistentes
+   - **Importancia**: Solo usuarios conectados pueden subir archivos
+
+7. **`test_allowed_file_extensiones_validas`**
+   - **Propósito**: Verificación exhaustiva de extensiones permitidas
+   - **Qué prueba**: 
+     - `.png`, `.jpg`, `.jpeg`, `.gif`, `.pdf`, `.txt` son aceptados
+   - **Importancia**: Lista blanca de extensiones seguras
+
+8. **`test_allowed_file_extensiones_invalidas`**
+   - **Propósito**: Verificar rechazo de archivos potencialmente peligrosos
+   - **Qué prueba**: 
+     - `.exe`, `.sh`, `.bat`, `.docx` son rechazados
+     - Archivos sin extensión son rechazados
+   - **Importancia**: Bloqueo de ejecutables y scripts maliciosos
+
+9. **`test_allowed_file_case_insensitive`**
+   - **Propósito**: Validar que mayúsculas/minúsculas no afectan validación
+   - **Qué prueba**: 
+     - `test.PNG`, `test.PDF`, `test.TxT` son aceptados igual que minúsculas
+   - **Importancia**: Experiencia de usuario - no depender de case del sistema operativo
+
 ### Frontend (Jest + React Testing Library)
 
 ```bash
@@ -156,6 +414,178 @@ npm test
 - `src/__tests__/ChatRoom.test.js` - Pruebas básicas del componente ChatRoom
 - `src/__tests__/ChatRoom.advanced.test.js` - Pruebas avanzadas con eventos de socket
 - `src/__tests__/Admin.test.js` - Pruebas de componentes de administración
+
+#### Explicación Detallada de Pruebas Frontend
+
+**`src/__tests__/HomePage.test.js`** (2 tests básicos):
+
+1. **`renderiza input de PIN y botón admin`**
+   - **Propósito**: Verificar que elementos esenciales de la UI se renderizan
+   - **Qué prueba**: 
+     - Input con placeholder "PIN de la Sala" está presente
+     - Botón "Iniciar Sesión (Admin)" está visible
+   - **Importancia**: Garantizar que la interfaz principal está accesible
+
+2. **`muestra error cuando el PIN no tiene 4 dígitos`**
+   - **Propósito**: Validar retroalimentación de error al usuario
+   - **Qué prueba**: 
+     - Ingresar PIN inválido (ej: "123") y enviar form
+     - Mensaje "El PIN debe tener exactamente 4 números." aparece
+   - **Importancia**: UX - usuario sabe por qué su entrada fue rechazada
+
+**`src/__tests__/HomePage.advanced.test.js`** (6 tests avanzados):
+
+1. **`permite solo números en el campo PIN`**
+   - **Propósito**: Verificar validación de entrada en tiempo real
+   - **Qué prueba**: 
+     - Intentar ingresar letras ("abcd") → campo permanece vacío
+     - Ingresar números ("1234") → aceptado correctamente
+   - **Importancia**: Prevenir entradas inválidas antes de envío
+
+2. **`limita el PIN a 4 dígitos máximo`**
+   - **Propósito**: Validar restricción de longitud del PIN
+   - **Qué prueba**: 
+     - Input tiene atributo `maxLength="4"`
+     - No se pueden ingresar más de 4 caracteres
+   - **Importancia**: Consistencia con formato de PIN del sistema
+
+3. **`muestra paso de nickname después de PIN válido`**
+   - **Propósito**: Verificar flujo de navegación multistep
+   - **Qué prueba**: 
+     - Después de enviar PIN válido ("1234")
+     - Input de Nickname aparece en pantalla
+   - **Importancia**: Flujo de usuario intuitivo paso a paso
+
+4. **`muestra error si nickname está vacío`**
+   - **Propósito**: Validar que nickname es obligatorio
+   - **Qué prueba**: 
+     - Completar paso 1 (PIN válido)
+     - Intentar enviar nickname vacío
+     - Mensaje de error "Debes ingresar un nickname" aparece
+   - **Importancia**: Evitar usuarios anónimos en el chat
+
+5. **`emite join_room con PIN y nickname correctos`**
+   - **Propósito**: Verificar integración con Socket.IO
+   - **Qué prueba**: 
+     - Completar ambos pasos (PIN "9999", nickname "TestUser")
+     - `socket.emit` fue llamado con evento `join_room` y datos correctos
+   - **Importancia**: Asegurar comunicación correcta con backend
+
+6. **Tests adicionales no mostrados pero presentes**:
+   - Validación de longitud máxima de nickname
+   - Manejo de respuestas del servidor (sala no encontrada)
+
+**`src/__tests__/ChatRoom.test.js`** (2 tests básicos):
+
+1. **`muestra mensajes y preview de imagen cuando es imagen`**
+   - **Propósito**: Verificar renderizado correcto de historial de mensajes
+   - **Qué prueba**: 
+     - Mensaje de texto ("Hola") se muestra
+     - Archivo de imagen (`pic.png`) se renderiza como `<img>` con alt correcto
+   - **Importancia**: Historial completo visible al entrar a la sala
+
+2. **`enviar mensaje dispara socket.emit`**
+   - **Propósito**: Validar envío de mensajes de texto
+   - **Qué prueba**: 
+     - Escribir "hola mundo" en input
+     - Enviar form
+     - `socket.emit('send_message', { contenido: 'hola mundo' })` fue llamado
+   - **Importancia**: Mensajes se transmiten correctamente al servidor
+
+**`src/__tests__/ChatRoom.advanced.test.js`** (12 tests avanzados):
+
+**Grupo: Renderizado de mensajes**
+
+1. **`muestra mensajes del sistema correctamente`**
+   - **Propósito**: Verificar formato de mensajes automáticos
+   - **Qué prueba**: 
+     - Mensajes con nickname "Sistema" se renderizan
+     - Texto como "Alice se ha unido a la sala." aparece
+   - **Importancia**: Notificaciones de eventos visibles para usuarios
+
+2. **`muestra el PIN y tipo de sala en el header`**
+   - **Propósito**: Validar información contextual de la sala
+   - **Qué prueba**: 
+     - PIN ("5678") se muestra en header
+     - Tipo de sala ("Multimedia") se muestra en header
+   - **Importancia**: Usuario siempre sabe en qué sala está
+
+3. **`renderiza archivo PDF como enlace (no imagen)`**
+   - **Propósito**: Verificar diferenciación de tipos de archivo
+   - **Qué prueba**: 
+     - Archivo PDF se renderiza como `<a>` (enlace descargable)
+     - NO se renderiza como `<img>`
+     - Nombre "documento.pdf" visible y clickeable
+   - **Importancia**: UX apropiada para archivos no visualizables
+
+4. **`distingue entre mensajes propios y de otros`**
+   - **Propósito**: Validar estilos diferenciados de mensajes
+   - **Qué prueba**: 
+     - Mensajes del usuario actual (Alice) y otros (Bob) se renderizan
+     - Ambos visibles pero potencialmente con estilos diferentes
+   - **Importancia**: Claridad visual de quién habla (como WhatsApp)
+
+**Grupo: Interacciones**
+
+5. **`limpia el input después de enviar mensaje`**
+   - **Propósito**: Verificar limpieza automática del campo de texto
+   - **Qué prueba**: 
+     - Escribir mensaje "Mensaje de prueba"
+     - Enviar
+     - Input vuelve a estar vacío
+   - **Importancia**: UX - listo para siguiente mensaje inmediatamente
+
+6. **`no envía mensajes vacíos`**
+   - **Propósito**: Evitar spam de mensajes sin contenido
+   - **Qué prueba**: 
+     - Intentar enviar mensaje vacío o solo espacios
+     - `socket.emit` NO es llamado
+   - **Importancia**: Reducir tráfico innecesario y mejorar UX
+
+7. **Tests adicionales de eventos Socket.IO**:
+   - Recepción de nuevos mensajes en tiempo real
+   - Actualización de lista de usuarios conectados
+   - Manejo de desconexiones
+   - Upload de archivos con feedback visual
+
+**`src/__tests__/Admin.test.js`** (5 tests):
+
+**Grupo: AdminLogin**
+
+1. **`renderiza campos de usuario y contraseña`**
+   - **Propósito**: Verificar formulario de login completo
+   - **Qué prueba**: 
+     - Input "Usuario" está presente
+     - Input "Contraseña" está presente
+     - Botón "Acceder" está visible
+   - **Importancia**: Interfaz de autenticación funcional
+
+2. **`muestra botón de volver`**
+   - **Propósito**: Validar navegación de regreso
+   - **Qué prueba**: 
+     - Botón "Volver" está presente
+   - **Importancia**: Usuario puede regresar sin autenticarse
+
+**Grupo: AdminDashboard**
+
+3. **`renderiza título del dashboard`**
+   - **Propósito**: Verificar carga correcta del panel admin
+   - **Qué prueba**: 
+     - Título "Panel de Administración" está visible
+   - **Importancia**: Confirmación visual de acceso administrativo
+
+4. **`muestra botones de crear sala y cerrar sesión`**
+   - **Propósito**: Validar acciones principales del admin
+   - **Qué prueba**: 
+     - Botón "Crear Sala" presente
+     - Botón "Cerrar Sesión" presente
+   - **Importancia**: Funcionalidades core del dashboard accesibles
+
+5. **Tests adicionales**:
+   - Listado de salas activas
+   - Visualización de historial de salas
+   - Eliminación de salas
+   - Manejo de tokens JWT expirados
 
 **Nota:** Todas las pruebas utilizan mocks para evitar dependencias externas (Socket.IO, axios, MongoDB).
 

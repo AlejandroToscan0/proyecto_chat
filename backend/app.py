@@ -1,7 +1,5 @@
-# Gevent debe importarse antes de cualquier otro módulo
 from gevent import monkey
 monkey.patch_all()
-
 from flask import Flask, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_cors import CORS
@@ -15,8 +13,11 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 
+# --- 1. CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tu-clave-secreta-muy-dificil!'
+
+# --- Configuración de Subida de Archivos ---
 UPLOAD_FOLDER = 'uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
@@ -25,22 +26,18 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# --- Configuración de MongoDB ---
 MONGO_URI = "mongodb+srv://malugmana2_db_user:appServer1619@cluster0.h7gaa5e.mongodb.net/?appName=Cluster0"
-
-if MONGO_URI: 
-    try:
-        client = pymongo.MongoClient(MONGO_URI)
-        db = client.get_database("chat_distribuido")
-        salas_collection = db.get_collection("salas")
-        admin_collection = db.get_collection("admins")
-        print("✅ ¡Conectado a MongoDB Atlas exitosamente!")
-    except Exception as e:
-        print(f"❌ Error al conectar a MongoDB: {e}")
-        client = None
-else:
-    print("⚠️  MONGO_URI no proporcionada. Iniciando sin conexión a la base de datos (client=None).")
+try:
+    client = pymongo.MongoClient(MONGO_URI)
+    db = client.get_database("chat_distribuido")
+    salas_collection = db.get_collection("salas")
+    admin_collection = db.get_collection("admins")
+    print("✅ ¡Conectado a MongoDB Atlas exitosamente!")
+except Exception as e:
+    print(f"❌ Error al conectar a MongoDB: {e}")
     client = None
     
 bcrypt = Bcrypt(app)
@@ -48,6 +45,8 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 user_sessions = {}
 
+
+# --- 2. ENDPOINTS DE API REST (Admin) ---
 
 @app.route('/api/setup-admin', methods=['GET'])
 def setup_admin():
@@ -91,6 +90,7 @@ def crear_sala():
     salas_collection.insert_one(nueva_sala)
     return jsonify({"mensaje": "Sala creada exitosamente", "id_sala": id_sala, "pin": pin_sala, "tipo": tipo_sala}), 201
 
+# --- Endpoint para Subir Archivos ---
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
     if not client: return jsonify({"error": "Base de datos no conectada"}), 500
@@ -122,6 +122,7 @@ def upload_file():
     else:
         return jsonify({"error": "Tipo de archivo no permitido."}), 400
 
+# --- Endpoint para Servir/Descargar los Archivos ---
 @app.route('/uploads/<filename>')
 def serve_uploaded_file(filename):
     try:
@@ -129,9 +130,11 @@ def serve_uploaded_file(filename):
     except FileNotFoundError:
         return jsonify({"error": "Archivo no encontrado"}), 404
 
+# --- ¡NUEVO! ENDPOINT 1: LISTAR TODAS LAS SALAS ---
 @app.route('/api/admin/salas', methods=['GET'])
 def get_all_salas():
     if not client: return jsonify({"error": "Base de datos no conectada"}), 500
+    # 1. Validar Token de Admin
     token = request.headers.get('Authorization')
     if not token: return jsonify({"error": "Token de autorización requerido"}), 401
     try:
@@ -139,16 +142,20 @@ def get_all_salas():
         jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
     except Exception as e:
         return jsonify({"error": "Token inválido o expirado"}), 401
+    # 2. Consultar la base de datos
     try:
+        # Excluimos el campo "mensajes" para que la respuesta sea ligera
         projection = {"mensajes": 0, "_id": 0}
         salas = list(salas_collection.find({}, projection))
         return jsonify(salas), 200
     except Exception as e:
         return jsonify({"error": f"Error al consultar la base de datos: {e}"}), 500
 
+# --- ¡NUEVO! ENDPOINT 2: VER HISTORIAL DE UNA SALA ---
 @app.route('/api/admin/sala/<id_sala>', methods=['GET'])
 def get_sala_history(id_sala):
     if not client: return jsonify({"error": "Base de datos no conectada"}), 500
+    # 1. Validar Token de Admin
     token = request.headers.get('Authorization')
     if not token: return jsonify({"error": "Token de autorización requerido"}), 401
     try:
@@ -156,6 +163,7 @@ def get_sala_history(id_sala):
         jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
     except Exception as e:
         return jsonify({"error": "Token inválido o expirado"}), 401
+    # 2. Consultar la base de datos
     try:
         projection = {"_id": 0}
         sala = salas_collection.find_one({"id_sala": id_sala}, projection)
@@ -166,9 +174,11 @@ def get_sala_history(id_sala):
     except Exception as e:
         return jsonify({"error": f"Error al consultar la base de datos: {e}"}), 500
 
+# ---  ENDPOINT 3: ELIMINAR UNA SALA ---
 @app.route('/api/admin/sala/<id_sala>', methods=['DELETE'])
 def delete_sala(id_sala):
     if not client: return jsonify({"error": "Base de datos no conectada"}), 500
+    # 1. Validar Token de Admin
     token = request.headers.get('Authorization')
     if not token: return jsonify({"error": "Token de autorización requerido"}), 401
     try:
@@ -176,15 +186,20 @@ def delete_sala(id_sala):
         jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
     except Exception as e:
         return jsonify({"error": "Token inválido o expirado"}), 401
+    # 2. Eliminar de la base de datos
     try:
         result = salas_collection.delete_one({"id_sala": id_sala})
         if result.deleted_count > 0:
+            # Opcional: Notificar a usuarios si estuvieran en la sala
+            # socketio.emit('sala_eliminada', {"mensaje": "La sala ha sido cerrada por un admin"}, room=id_sala)
             return jsonify({"mensaje": f"Sala {id_sala} eliminada exitosamente"}), 200
         else:
             return jsonify({"error": "Sala no encontrada"}), 404
     except Exception as e:
         return jsonify({"error": f"Error al eliminar de la base de datos: {e}"}), 500
 
+
+# EVENTOS DE WEBSOCKET (Chat) ---
 
 @socketio.on('connect')
 def handle_connect():
@@ -213,6 +228,7 @@ def handle_join_room(data):
     salas_collection.update_one({"id_sala": id_sala}, {"$push": {"usuarios_conectados": nickname}})
     user_sessions[sid] = {"nickname": nickname, "id_sala": id_sala}
     
+    # --- Lógica de "Unirse" ) ---
     sala_actualizada = salas_collection.find_one({"id_sala": id_sala})
     usuarios_conectados = sala_actualizada.get('usuarios_conectados', [])
     socketio.emit('update_user_list', usuarios_conectados, room=id_sala)
@@ -255,6 +271,7 @@ def handle_disconnect():
                 socketio.emit('new_message', {"nickname": "Sistema", "tipo": "texto", "contenido": f"{nickname} ha abandonado la sala."}, room=id_sala)
         print(f"Éxito: {nickname} ({sid}) abandonó la sala {id_sala}")
 
+# --- 4. PUNTO DE ENTRADA ---
 if __name__ == '__main__':
     print("Iniciando servidor en http://localhost:5001")
     try:
