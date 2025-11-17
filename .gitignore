@@ -1,0 +1,36 @@
+## Ignorar entornos virtuales
+/backend/venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Node
+/cliente/node_modules/
+/cliente/build/
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Uploaded files (if you want to ignore uploads in backend)
+#/backend/uploads/
