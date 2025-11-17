@@ -141,6 +141,16 @@ git remote add origin <url-del-repo>
 git push -u origin main
 ```
 
+Consolidación del repositorio (nota importante)
+----------------------------------------------
+
+Este repositorio fue consolidado para evitar repos git anidados: la carpeta `cliente/` ahora forma parte del mismo repositorio raíz.
+
+- Qué significa: trabaja siempre desde la raíz del proyecto (`proyecto_chat`) al hacer commits, crear ramas o abrir el proyecto en tu editor.
+- Si antes abrías `cliente/` como proyecto independiente, ahora debes abrir la carpeta raíz para que Git, CI y los scripts funcionen correctamente.
+- Se hizo una copia de seguridad local del antiguo `.git` de `cliente/` antes de eliminarlo (si hay necesidad de restaurar algo, hay un backup local previo a la limpieza). Si necesitas que reescriba la historia para purgar cualquier rastro de esos backups del remoto, dímelo — eso requiere un push forzado y coordinación con colaboradores.
+
+
 Soporte y siguientes pasos recomendados
 - Añadir tests unitarios básicos para endpoints y lógica de negocio.
 - Evaluar usar Docker para desarrollo y despliegue reproducible.
