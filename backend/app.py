@@ -18,7 +18,12 @@ from werkzeug.utils import secure_filename
 
 # --- 1. CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'tu-clave-secreta-muy-dificil!'
+# Leer SECRET_KEY desde variables de entorno (recomendado). Se usa un valor por defecto
+# solo para desarrollo/local. No commits con secretos reales.
+SECRET_KEY = os.environ.get('SECRET_KEY', 'tu-clave-secreta-muy-dificil!')
+if 'SECRET_KEY' not in os.environ:
+    print("⚠️  SECRET_KEY no está en las variables de entorno — usando valor por defecto (solo dev).")
+app.config['SECRET_KEY'] = SECRET_KEY
 
 # --- Configuración de Subida de Archivos ---
 UPLOAD_FOLDER = 'uploads'
@@ -32,7 +37,9 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # --- Configuración de MongoDB ---
-MONGO_URI = "mongodb+srv://malugmana2_db_user:appServer1619@cluster0.h7gaa5e.mongodb.net/?appName=Cluster0"
+MONGO_URI = os.environ.get('MONGO_URI', "mongodb+srv://malugmana2_db_user:appServer1619@cluster0.h7gaa5e.mongodb.net/?appName=Cluster0")
+if 'MONGO_URI' not in os.environ:
+    print("⚠️  MONGO_URI no está en las variables de entorno — usando la URI embebida (solo dev).")
 try:
     client = pymongo.MongoClient(MONGO_URI)
     db = client.get_database("chat_distribuido")
@@ -276,9 +283,7 @@ def handle_disconnect():
 
 # --- 4. PUNTO DE ENTRADA ---
 if __name__ == '__main__':
-    print("Iniciando servidor en http://localhost:5001")
-    try:
-        socketio.run(app, host='0.0.0.0', port=5001, debug=True)
-    except Exception as e:
-        print(f"\nModo Debug falló ({e}). Reiniciando en modo de producción (debug=False).\n")
-        socketio.run(app, host='0.0.0.0', port=5001, debug=False)
+    # Ejecutar el servidor sin el reloader de Werkzeug para evitar conflictos con gevent
+    # (el reloader hace fork() y gevent puede fallar en los hooks al hacerlo).
+    print("Iniciando servidor en http://localhost:5001 (debug=False, use_reloader=False)")
+    socketio.run(app, host='0.0.0.0', port=5001, debug=False, use_reloader=False)
