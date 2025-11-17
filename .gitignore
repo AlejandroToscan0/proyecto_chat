@@ -34,3 +34,8 @@ node_modules/
 
 # Uploaded files (if you want to ignore uploads in backend)
 #/backend/uploads/
+
+# Ignore backups created when consolidating nested .git
+cliente/.git-backup-*
+cliente/.git.config.backup
+
