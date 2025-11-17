@@ -1,0 +1,41 @@
+/* Paleta de colores Discord */
+:root {
+  --discord-dark: #36393f;
+  --discord-dark-2: #2f3136;
+  --discord-dark-3: #202225;
+  --discord-input: #40444b;
+  --discord-blurple: #5865F2;
+  --discord-green: #43b581;
+  --discord-red: #f04747;
+  --discord-text: #ffffff;
+  --discord-text-muted: #b9bbbe;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* ¡NUEVO! Estilos globales del tema */
+  background-color: var(--discord-dark);
+  color: var(--discord-text);
+}
+
+.App {
+  text-align: center;
+}
+
+/* Scrollbar (Opcional, pero le da el toque Discord) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--discord-dark-3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--discord-dark-2);
+}
