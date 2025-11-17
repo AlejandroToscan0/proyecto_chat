@@ -1,6 +1,6 @@
 ## Proyecto: Chat en tiempo real (React + Flask + Socket.IO)
 
-[![CI](https://github.com/AlejandroToscan0/proyecto_chat/actions/workflows/python-app.yml/badge.svg)](https://github.com/AlejandroToscan0/proyecto_chat/actions/workflows/python-app.yml)
+[![CI](https://github.com/AlejandroToscan0/proyecto_chat/actions/workflows/ci.yml/badge.svg)](https://github.com/AlejandroToscan0/proyecto_chat/actions/workflows/ci.yml)
 
 Este repositorio contiene una aplicación de chat en tiempo real con frontend en React y backend en Flask + Flask-SocketIO. El backend usa MongoDB Atlas para persistencia.
 
@@ -162,6 +162,37 @@ pip install pytest
 pytest backend/tests -q
 ```
 
+Frontend (React) - tests
+-------------------------
+He añadido pruebas para el frontend en `src/__tests__` (HomePage, AdminLogin, ChatRoom).
+
+Cómo ejecutar los tests del frontend:
+
+```bash
+# desde la raíz del proyecto (donde está package.json)
+npm install
+npm test -- --watchAll=false
+```
+
+
+Ejecutar todos los tests (backend + frontend)
+-------------------------------------------
+Si quieres ejecutar ambos conjuntos de tests desde la raíz del proyecto de forma secuencial, puedes usar:
+
+```bash
+# Ejecutar tests backend
+source backend/.venv/bin/activate && pytest backend/tests -q
+
+# Ejecutar tests frontend
+npm test -- --watchAll=false
+```
+
+<!-- CI trigger: no-op commit para forzar GitHub Actions -->
+
+<!-- CI trigger: bump -->
+
+El workflow de CI (`.github/workflows/ci.yml`) ejecuta tanto los tests del backend como los del frontend en cada push/PR a `main`.
+
 Qué incluyen las pruebas
 - Tests REST: creación de admin, login, creación/listado/eliminación de salas. Se usan colecciones en memoria (mock)
   para no depender de MongoDB Atlas.
@@ -173,14 +204,3 @@ GitHub Actions
 Workflow creado: `.github/workflows/python-app.yml`.
 Qué hace:
 - En push/PR a `main` instala dependencias desde `backend/requirements.txt` y ejecuta `pytest backend/tests`.
-
-Notas
-- El workflow en CI no necesita un MongoDB real porque las pruebas usan mocks/colecciones en memoria. En caso de
-  que añadas tests que sí dependan de MongoDB puedes configurar un servicio de MongoDB en el workflow.
-
-Contacto
-- Si quieres, puedo:
-  - Añadir un `Procfile` / `systemd` unit example para ejecutar el backend en producción.
-  - Configurar una pipeline CI mínima (GitHub Actions) para tests y linters.
-
-Gracias — si quieres que haga alguno de los siguientes pasos (añadir `Procfile`, push al remote, crear Dockerfile, configurar systemd o GitHub Actions), dime cuál y lo implemento.
