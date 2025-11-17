@@ -39,3 +39,5 @@ node_modules/
 cliente/.git-backup-*
 cliente/.git.config.backup
 
+
+/.git_backups/
