@@ -4,5 +4,4 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
-// Mock scrollIntoView para evitar errores en tests
 Element.prototype.scrollIntoView = jest.fn();
