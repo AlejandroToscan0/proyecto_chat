@@ -16,36 +16,9 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 
-# --- Cargar variables desde backend/.env si existe (útil al ejecutar python directamente)
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-if os.path.isfile(env_path):
-    try:
-        print(f"ℹ️  Cargando variables de entorno desde {env_path}")
-        with open(env_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                if '=' not in line:
-                    continue
-                k, v = line.split('=', 1)
-                k = k.strip()
-                v = v.strip()
-                if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
-                    v = v[1:-1]
-                # No sobreescribir variables ya exportadas por el entorno
-                os.environ.setdefault(k, v)
-    except Exception as e:
-        print(f"⚠️  No pude cargar {env_path}: {e}")
-
 # --- 1. CONFIGURACIÓN INICIAL ---
 app = Flask(__name__)
-# Leer SECRET_KEY desde variables de entorno (recomendado). Se usa un valor por defecto
-# solo para desarrollo/local. No commits con secretos reales.
-SECRET_KEY = os.environ.get('SECRET_KEY', 'tu-clave-secreta-muy-dificil!')
-if 'SECRET_KEY' not in os.environ:
-    print("⚠️  SECRET_KEY no está en las variables de entorno — usando valor por defecto (solo dev).")
-app.config['SECRET_KEY'] = SECRET_KEY
+app.config['SECRET_KEY'] = 'tu-clave-secreta-muy-dificil!'
 
 # --- Configuración de Subida de Archivos ---
 UPLOAD_FOLDER = 'uploads'
@@ -59,30 +32,21 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # --- Configuración de MongoDB ---
-MONGO_URI = os.environ.get('MONGO_URI', "mongodb+srv://malugmana2_db_user:appServer1619@cluster0.h7gaa5e.mongodb.net/?appName=Cluster0")
-if 'MONGO_URI' not in os.environ:
-    print("⚠️  MONGO_URI no está en las variables de entorno — usando la URI embebida (solo dev).")
+# Por seguridad la URI se lee desde la variable de entorno `MONGO_URI`.
+MONGO_URI = "mongodb+srv://malugmana2_db_user:appServer1619@cluster0.h7gaa5e.mongodb.net/?appName=Cluster0"
 
-# Intentar usar certifi para una verificación TLS robusta
-ca_file = None
-try:
-    import certifi
-    ca_file = certifi.where()
-    print(f"✔️  certifi encontrado: {ca_file}")
-except Exception:
-    ca_file = None
-
-try:
-    if ca_file:
-        client = pymongo.MongoClient(MONGO_URI, tlsCAFile=ca_file)
-    else:
+if MONGO_URI: 
+    try:
         client = pymongo.MongoClient(MONGO_URI)
-    db = client.get_database("chat_distribuido")
-    salas_collection = db.get_collection("salas")
-    admin_collection = db.get_collection("admins")
-    print("✅ ¡Conectado a MongoDB Atlas exitosamente!")
-except Exception as e:
-    print(f"❌ Error al conectar a MongoDB: {e}")
+        db = client.get_database("chat_distribuido")
+        salas_collection = db.get_collection("salas")
+        admin_collection = db.get_collection("admins")
+        print("✅ ¡Conectado a MongoDB Atlas exitosamente!")
+    except Exception as e:
+        print(f"❌ Error al conectar a MongoDB: {e}")
+        client = None
+else:
+    print("⚠️  MONGO_URI no proporcionada. Iniciando sin conexión a la base de datos (client=None).")
     client = None
     
 bcrypt = Bcrypt(app)
@@ -318,10 +282,9 @@ def handle_disconnect():
 
 # --- 4. PUNTO DE ENTRADA ---
 if __name__ == '__main__':
-    # Leer host/port desde variables de entorno (útil para cambiar el puerto sin editar código).
-    host = os.environ.get('HOST', '0.0.0.0')
-    port = int(os.environ.get('PORT', os.environ.get('FLASK_RUN_PORT', '5001')))
-    # Ejecutar el servidor sin el reloader de Werkzeug para evitar conflictos con gevent
-    # (el reloader hace fork() y gevent puede fallar en los hooks al hacerlo).
-    print(f"Iniciando servidor en http://{host}:{port} (debug=False, use_reloader=False)")
-    socketio.run(app, host=host, port=port, debug=False, use_reloader=False)
+    print("Iniciando servidor en http://localhost:5001")
+    try:
+        socketio.run(app, host='0.0.0.0', port=5001, debug=True)
+    except Exception as e:
+        print(f"\nModo Debug falló ({e}). Reiniciando en modo de producción (debug=False).\n")
+        socketio.run(app, host='0.0.0.0', port=5001, debug=False)

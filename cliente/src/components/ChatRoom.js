@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import axios from 'axios'; 
 
-// Base API URL configurable via REACT_APP_API_URL
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
-// Host parte (sin "/api") para construir URLs de archivos
-const API_HOST = (API_URL.replace(/\/api\/?$/, ''));
+const API_URL = 'http://localhost:5001/api';
 
 const ChatRoom = ({ socket, chatInfo, onLeave }) => {
-
+    
     const [messages, setMessages] = useState(chatInfo.history || []);
     const [newMessage, setNewMessage] = useState('');
     const [users, setUsers] = useState(chatInfo.users || []);
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState('');
-
+    
     const fileInputRef = useRef(null);
     const chatEndRef = useRef(null);
 
@@ -97,7 +94,7 @@ const ChatRoom = ({ socket, chatInfo, onLeave }) => {
     // --- RENDERIZADO (¡MODIFICADO!) ---
     const renderMessage = (msg, index) => {
         const isMe = msg.nickname === chatInfo.nickname;
-
+        
         // Mensaje del sistema
         if (msg.nickname === 'Sistema') {
             return (
@@ -109,41 +106,41 @@ const ChatRoom = ({ socket, chatInfo, onLeave }) => {
 
         // ¡LÓGICA DE ARCHIVO MODIFICADA!
         if (msg.tipo === 'archivo') {
-            const fileUrl = `${API_HOST}${msg.url}`;
-
+            const fileUrl = `http://localhost:5001${msg.url}`;
+            
             // Si es una IMAGEN, muestra <img>
             if (isImageFile(msg.nombre_archivo)) {
                 return (
                     <div key={index} style={isMe ? styles.myMessage : styles.otherMessage}>
                         {!isMe && <strong style={styles.nickname}>{msg.nickname}</strong>}
-                        <div style={{ ...styles.messageContent, padding: '5px', backgroundColor: isMe ? '#007bff' : '#f0f0f0' }}>
+                        <div style={{...styles.messageContent, padding: '5px', backgroundColor: isMe ? '#007bff' : '#f0f0f0'}}>
                             {/* Hacemos la imagen un link para verla en grande */}
                             <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                                <img
-                                    src={fileUrl}
-                                    alt={msg.nombre_archivo}
+                                <img 
+                                    src={fileUrl} 
+                                    alt={msg.nombre_archivo} 
                                     style={styles.imagePreview} // ¡Nuevo estilo!
                                 />
                             </a>
-                            <p style={{ margin: '5px 0 0 5px', fontSize: '0.9rem', color: isMe ? '#fff' : '#333' }}>
+                            <p style={{margin: '5px 0 0 5px', fontSize: '0.9rem', color: isMe ? '#fff' : '#333'}}>
                                 {msg.nombre_archivo}
                             </p>
                         </div>
                     </div>
                 );
-            }
-
+            } 
+            
             // Si NO es imagen (PDF, TXT, etc.), muestra el enlace <a>
             return (
                 <div key={index} style={isMe ? styles.myMessage : styles.otherMessage}>
                     {!isMe && <strong style={styles.nickname}>{msg.nickname}</strong>}
-                    <div style={{ ...styles.messageContent, backgroundColor: isMe ? '#007bff' : '#f0f0f0', color: isMe ? 'white' : '#333' }}>
-                        <p style={{ margin: 0, fontWeight: 'bold' }}>Archivo Adjunto:</p>
-                        <a
-                            href={fileUrl}
-                            target="_blank"
+                    <div style={{...styles.messageContent, backgroundColor: isMe ? '#007bff' : '#f0f0f0', color: isMe ? 'white' : '#333'}}>
+                        <p style={{margin: 0, fontWeight: 'bold'}}>Archivo Adjunto:</p>
+                        <a 
+                            href={fileUrl} 
+                            target="_blank" 
                             rel="noopener noreferrer"
-                            style={{ color: isMe ? '#fff' : '#007bff', textDecoration: 'underline' }}
+                            style={{color: isMe ? '#fff' : '#007bff', textDecoration: 'underline'}}
                         >
                             {msg.nombre_archivo}
                         </a>
@@ -151,7 +148,7 @@ const ChatRoom = ({ socket, chatInfo, onLeave }) => {
                 </div>
             );
         }
-
+        
         // Mensaje de texto normal
         return (
             <div key={index} style={isMe ? styles.myMessage : styles.otherMessage}>
@@ -167,37 +164,37 @@ const ChatRoom = ({ socket, chatInfo, onLeave }) => {
                 <h2 style={styles.title}>Sala de Chat (PIN: {chatInfo.pin}) - Tipo: {chatInfo.roomType}</h2>
                 <button onClick={onLeave} style={styles.leaveButton}>Salir</button>
             </div>
-
+            
             <div style={styles.mainContent}>
                 <div style={styles.chatArea}>
                     <div style={styles.chatWindow}>
                         {messages.map(renderMessage)}
                         <div ref={chatEndRef} />
                     </div>
-
+                    
                     <form onSubmit={handleSendMessage} style={styles.inputArea}>
                         {chatInfo.roomType === 'Multimedia' && (
                             <>
-                                <button
-                                    type="button"
-                                    onClick={triggerFileInput}
-                                    style={styles.attachButton}
+                                <button 
+                                    type="button" 
+                                    onClick={triggerFileInput} 
+                                    style={styles.attachButton} 
                                     disabled={uploading}
                                 >
                                     {uploading ? '...' : '📎'}
                                 </button>
-                                <input
-                                    type="file"
-                                    ref={fileInputRef}
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
                                     onChange={handleFileUpload}
-                                    style={{ display: 'none' }}
+                                    style={{ display: 'none' }} 
                                 />
                             </>
                         )}
-
-                        <input
-                            type="text"
-                            placeholder="Escribe un mensaje..."
+                        
+                        <input 
+                            type="text" 
+                            placeholder="Escribe un mensaje..." 
                             style={styles.textInput}
                             value={newMessage}
                             onChange={(e) => setNewMessage(e.target.value)}

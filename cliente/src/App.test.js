@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('muestra la pantalla principal (Home) con el título Chat', () => {
+test('renderiza la aplicación correctamente', () => {
   render(<App />);
-  const title = screen.getByText(/Chat/i);
-  expect(title).toBeInTheDocument();
+  // Verifica que existe el título ChatESPE
+  expect(screen.getByText(/Chat/i)).toBeInTheDocument();
+  expect(screen.getByText(/ESPE/i)).toBeInTheDocument();
 });

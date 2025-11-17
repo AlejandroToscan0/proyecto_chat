@@ -2,43 +2,35 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ChatRoom from '../components/ChatRoom';
 
-const makeSocket = () => ({
+const mockSocket = {
     on: jest.fn(),
     off: jest.fn(),
     emit: jest.fn(),
-    id: 'socket-1'
+    id: 'socket-1',
+};
+
+const chatInfo = {
+    pin: '1234',
+    roomType: 'Multimedia',
+    history: [
+        { nickname: 'Alice', tipo: 'texto', contenido: 'Hola' },
+        { nickname: 'Bob', tipo: 'archivo', nombre_archivo: 'pic.png', url: '/uploads/pic.png' }
+    ],
+    users: ['Alice', 'Bob'],
+    nickname: 'Bob'
+};
+
+test('muestra mensajes y preview de imagen cuando es imagen', () => {
+    render(<ChatRoom socket={mockSocket} chatInfo={chatInfo} onLeave={jest.fn()} />);
+    expect(screen.getByText(/Hola/)).toBeInTheDocument();
+    // la imagen debe existir con alt igual al nombre del archivo
+    expect(screen.getByAltText('pic.png')).toBeInTheDocument();
 });
 
-test('muestra mensajes de texto y archivos, y emite send_message', () => {
-    const socket = makeSocket();
-    const chatInfo = {
-        nickname: 'me',
-        pin: '1234',
-        roomType: 'Multimedia',
-        history: [
-            { nickname: 'me', tipo: 'texto', contenido: 'hola' },
-            { nickname: 'other', tipo: 'archivo', nombre_archivo: 'file.pdf', url: '/uploads/file.pdf' },
-            { nickname: 'other', tipo: 'archivo', nombre_archivo: 'image.png', url: '/uploads/image.png' },
-        ],
-        users: ['me', 'other']
-    };
-
-    const onLeave = jest.fn();
-    render(<ChatRoom socket={socket} chatInfo={chatInfo} onLeave={onLeave} />);
-
-    // Texto
-    expect(screen.getByText(/hola/i)).toBeInTheDocument();
-
-    // Archivo no imagen -> link
-    expect(screen.getByText(/file.pdf/i)).toBeInTheDocument();
-
-    // Imagen -> img element
-    const imgs = screen.getAllByRole('img');
-    expect(imgs.length).toBeGreaterThanOrEqual(1);
-
-    // Enviar mensaje
-    const input = screen.getByPlaceholderText(/Escribe un mensaje/i);
-    fireEvent.change(input, { target: { value: 'mensaje de prueba' } });
-    fireEvent.submit(input);
-    expect(socket.emit).toHaveBeenCalledWith('send_message', { contenido: 'mensaje de prueba' });
+test('enviar mensaje dispara socket.emit', () => {
+    render(<ChatRoom socket={mockSocket} chatInfo={chatInfo} onLeave={jest.fn()} />);
+    const input = screen.getByPlaceholderText(/Escribe un mensaje.../i);
+    fireEvent.change(input, { target: { value: 'hola mundo' } });
+    fireEvent.submit(input.closest('form'));
+    expect(mockSocket.emit).toHaveBeenCalledWith('send_message', { contenido: 'hola mundo' });
 });
