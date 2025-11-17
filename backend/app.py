@@ -283,7 +283,10 @@ def handle_disconnect():
 
 # --- 4. PUNTO DE ENTRADA ---
 if __name__ == '__main__':
+    # Leer host/port desde variables de entorno (útil para cambiar el puerto sin editar código).
+    host = os.environ.get('HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', os.environ.get('FLASK_RUN_PORT', '5001')))
     # Ejecutar el servidor sin el reloader de Werkzeug para evitar conflictos con gevent
     # (el reloader hace fork() y gevent puede fallar en los hooks al hacerlo).
-    print("Iniciando servidor en http://localhost:5001 (debug=False, use_reloader=False)")
-    socketio.run(app, host='0.0.0.0', port=5001, debug=False, use_reloader=False)
+    print(f"Iniciando servidor en http://{host}:{port} (debug=False, use_reloader=False)")
+    socketio.run(app, host=host, port=port, debug=False, use_reloader=False)
