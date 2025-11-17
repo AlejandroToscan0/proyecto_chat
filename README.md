@@ -1,5 +1,7 @@
 ## Proyecto: Chat en tiempo real (React + Flask + Socket.IO)
 
+[![CI](https://github.com/AlejandroToscan0/proyecto_chat/actions/workflows/python-app.yml/badge.svg)](https://github.com/AlejandroToscan0/proyecto_chat/actions/workflows/python-app.yml)
+
 Este repositorio contiene una aplicación de chat en tiempo real con frontend en React y backend en Flask + Flask-SocketIO. El backend usa MongoDB Atlas para persistencia.
 
 Contenido
